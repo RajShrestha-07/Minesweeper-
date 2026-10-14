@@ -2,7 +2,7 @@
 
 Minesweeper is a small web game. A 9x9 board hides 10 mines. Open the safe squares, and each number tells you how many mines touch that square. Flag the squares you think are mines. Your first tap is always safe, there is a timer, and you can switch between Dig and Flag mode, so it works on a phone without a right click.
 
-Live demo:
+Live demo: https://rajshrestha-07.github.io/Minesweeper-/
 
 Built with: HTML, CSS and JavaScript.
 
