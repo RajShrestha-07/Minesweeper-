@@ -1,0 +1,186 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Minesweeper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one narrow column on graph paper. Status row, a 9x9 board, and a tap mode switch so phone players can flag without a right click. */
+:root {
+  --paper: #eef1f4; --card: #ffffff; --ink: #14233a; --muted: #5c6b80; --line: #cdd5df;
+  --closed: #c7d0dc; --open: #ffffff; --hot: #e8452c; --good: #1f7a4d;
+  --n1: #1d5fd0; --n2: #1f7a4d; --n3: #c62828; --n4: #5b2c9f; --n5: #8a4b08; --n6: #0b7285; --n7: #14233a; --n8: #5c6b80;
+  --accent: #14233a; --accent-ink: #eef1f4;
+  --display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1826; --card: #17233a; --ink: #e7ecf4; --muted: #93a2ba; --line: #2a3a56;
+    --closed: #33476a; --open: #0f1826; --hot: #ffb02e; --good: #6fd39b;
+    --n1: #7fb0ff; --n2: #6fd39b; --n3: #ff8a80; --n4: #c9a2ff; --n5: #ffb870; --n6: #6fd6e8; --n7: #e7ecf4; --n8: #93a2ba;
+    --accent: #e7ecf4; --accent-ink: #0f1826; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f1826; --card: #17233a; --ink: #e7ecf4; --muted: #93a2ba; --line: #2a3a56;
+  --closed: #33476a; --open: #0f1826; --hot: #ffb02e; --good: #6fd39b;
+  --n1: #7fb0ff; --n2: #6fd39b; --n3: #ff8a80; --n4: #c9a2ff; --n5: #ffb870; --n6: #6fd6e8; --n7: #e7ecf4; --n8: #93a2ba;
+  --accent: #e7ecf4; --accent-ink: #0f1826; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--mono); font-size: 14px; line-height: 1.5;
+  padding-inline: 16px; padding-block: 28px 56px;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 28px 28px; background-position: -1px -1px;
+}
+main { max-width: 440px; margin-inline: auto; }
+.panel { background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(2rem, 9vw, 3rem); line-height: 1; letter-spacing: -0.02em; margin: 0; }
+p { margin: 0; color: var(--muted); }
+button { font: inherit; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--hot); outline-offset: 1px; }
+.bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.stat { display: flex; gap: 18px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.stat b { color: var(--ink); font-weight: 600; }
+.status { font: 800 1.2rem var(--display); min-height: 1.6em; }
+.board { display: grid; grid-template-columns: repeat(9, 1fr); gap: 3px; padding: 6px; background: var(--card); border: 2px solid var(--ink); border-radius: 4px; user-select: none; -webkit-user-select: none; }
+.c { aspect-ratio: 1; min-width: 0; padding: 0; border: 0; border-radius: 3px; background: var(--closed); color: var(--ink); font: 800 clamp(13px, 4.6vw, 20px) var(--display); display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
+.c.open { background: var(--open); cursor: default; box-shadow: inset 0 0 0 1px var(--line); }
+.c.mine { background: var(--hot); color: var(--paper); }
+.c.flag { color: var(--hot); }
+.c.wrong { text-decoration: line-through; }
+.n1 { color: var(--n1); } .n2 { color: var(--n2); } .n3 { color: var(--n3); } .n4 { color: var(--n4); }
+.n5 { color: var(--n5); } .n6 { color: var(--n6); } .n7 { color: var(--n7); } .n8 { color: var(--n8); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.btn { font-weight: 600; padding: 9px 14px; color: var(--accent-ink); background: var(--accent); border: 2px solid var(--accent); border-radius: 4px; }
+.mode { display: flex; gap: 0; }
+.mode button { padding: 9px 14px; font-weight: 600; color: var(--ink); background: var(--card); border: 2px solid var(--ink); }
+.mode button:first-child { border-radius: 4px 0 0 4px; } .mode button:last-child { border-radius: 0 4px 4px 0; border-left: 0; }
+.mode button[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); }
+</style>
+
+<main>
+  <div class="panel">
+    <h1>Minesweeper</h1>
+    <p>Numbers show how many mines touch a square. Open every safe square. Use Flag mode to mark mines (or right-click on a computer).</p>
+    <div class="bar">
+      <div class="status" id="status" role="status"></div>
+      <div class="stat"><span>Mines <b id="left">10</b></span><span>Time <b id="time">0</b></span></div>
+    </div>
+    <div class="board" id="board" aria-label="Minesweeper board"></div>
+    <div class="row">
+      <div class="mode" role="group" aria-label="Tap mode">
+        <button type="button" id="mdig" aria-pressed="true">Dig</button>
+        <button type="button" id="mflag" aria-pressed="false">Flag</button>
+      </div>
+      <button class="btn" id="new" type="button">New game</button>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var S = 9, M = 10;
+  var mines, open, flags, count, started, over, timer, secs, mode = "dig", cells = [];
+  var boardEl = $("board");
+
+  for (var i = 0; i < S * S; i++) {
+    (function (idx) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "c"; b.setAttribute("aria-label", "Square " + (idx + 1));
+      b.addEventListener("click", function () { act(idx, mode === "flag"); });
+      b.addEventListener("contextmenu", function (e) { e.preventDefault(); act(idx, true); });
+      boardEl.appendChild(b); cells.push(b);
+    })(i);
+  }
+
+  function neighbors(i) {
+    var r = Math.floor(i / S), c = i % S, out = [];
+    for (var dr = -1; dr <= 1; dr++) for (var dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      var nr = r + dr, nc = c + dc;
+      if (nr >= 0 && nr < S && nc >= 0 && nc < S) out.push(nr * S + nc);
+    }
+    return out;
+  }
+  function init() {
+    mines = new Array(S * S).fill(false); open = new Array(S * S).fill(false);
+    flags = new Array(S * S).fill(false); count = new Array(S * S).fill(0);
+    started = false; over = false; secs = 0; clearInterval(timer); timer = null;
+    $("time").textContent = 0; $("status").textContent = "Dig a square to start."; draw();
+  }
+  function place(safe) {
+    var placed = 0;
+    while (placed < M) {
+      var i = Math.floor(Math.random() * S * S);
+      if (mines[i] || i === safe || neighbors(safe).indexOf(i) >= 0) continue;
+      mines[i] = true; placed++;
+    }
+    for (var k = 0; k < S * S; k++) count[k] = neighbors(k).filter(function (n) { return mines[n]; }).length;
+  }
+  function act(i, flagMode) {
+    if (over) return;
+    if (flagMode) {
+      if (open[i]) return;
+      flags[i] = !flags[i]; draw(); return;
+    }
+    if (flags[i] || open[i]) return;
+    if (!started) {
+      started = true; place(i); $("status").textContent = "Good luck.";
+      timer = setInterval(function () { secs++; $("time").textContent = secs; }, 1000);
+    }
+    if (mines[i]) { lose(i); return; }
+    reveal(i); draw(); checkWin();
+  }
+  function reveal(i) {
+    var stack = [i];
+    while (stack.length) {
+      var k = stack.pop();
+      if (open[k] || flags[k]) continue;
+      open[k] = true;
+      if (count[k] === 0) neighbors(k).forEach(function (n) { if (!open[n] && !mines[n]) stack.push(n); });
+    }
+  }
+  function checkWin() {
+    var safeOpen = 0;
+    for (var i = 0; i < S * S; i++) if (open[i]) safeOpen++;
+    if (safeOpen === S * S - M) {
+      over = true; clearInterval(timer);
+      for (var k = 0; k < S * S; k++) if (mines[k]) flags[k] = true;
+      $("status").textContent = "You cleared it in " + secs + " seconds!"; draw();
+    }
+  }
+  function lose(hit) {
+    over = true; clearInterval(timer); $("status").textContent = "Boom. Try again.";
+    draw(hit);
+  }
+  function draw(hit) {
+    var fl = 0;
+    cells.forEach(function (el, i) {
+      var cls = "c", txt = "";
+      if (flags[i]) fl++;
+      if (open[i]) {
+        cls += " open";
+        if (count[i]) { cls += " n" + count[i]; txt = String(count[i]); }
+      } else if (over && mines[i] && !flags[i]) { cls += " mine"; txt = "*"; }
+      else if (over && flags[i] && !mines[i]) { cls += " wrong flag"; txt = "F"; }
+      else if (flags[i]) { cls += " flag"; txt = "F"; }
+      el.className = cls; el.textContent = txt;
+      el.setAttribute("aria-label", "Square " + (i + 1) + (open[i] ? ", " + count[i] + " nearby" : flags[i] ? ", flagged" : ", closed"));
+    });
+    $("left").textContent = M - fl;
+  }
+  function setMode(m) {
+    mode = m;
+    $("mdig").setAttribute("aria-pressed", m === "dig" ? "true" : "false");
+    $("mflag").setAttribute("aria-pressed", m === "flag" ? "true" : "false");
+  }
+  $("mdig").addEventListener("click", function () { setMode("dig"); });
+  $("mflag").addEventListener("click", function () { setMode("flag"); });
+  $("new").addEventListener("click", init);
+  init();
+})();
+</script>
+
+</body></html>
